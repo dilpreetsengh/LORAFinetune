@@ -12,12 +12,12 @@ import json
 import random
 from pathlib import Path
 
+from unsloth import FastLanguageModel
+from unsloth.chat_templates import get_chat_template
 import torch
 from datasets import Dataset, load_dataset
 from transformers import TrainingArguments
 from trl import SFTTrainer
-from unsloth import FastLanguageModel
-from unsloth.chat_templates import get_chat_template
 
 
 SEED = 42
@@ -38,7 +38,7 @@ def parse_args() -> argparse.Namespace:
 def format_example(row: dict) -> dict:
     instruction = (
         "You are a Cypher query expert. Given a Neo4j graph schema and a "
-        "natural-language question, write the correct Cypher query.\n\n"
+        "natural language question, write the correct Cypher query.\n\n"
         f"Schema:\n{row['schema']}\n\n"
         f"Question: {row['question']}"
     )
@@ -149,10 +149,9 @@ def main() -> None:
             fp16=not torch.cuda.is_bf16_supported(),
             bf16=torch.cuda.is_bf16_supported(),
             logging_steps=10,
-            evaluation_strategy="steps",
+            eval_strategy="steps",
             eval_steps=50,
-            save_strategy="steps",
-            save_steps=50,
+            save_strategy="no",
             report_to="none",
             seed=SEED,
         ),
