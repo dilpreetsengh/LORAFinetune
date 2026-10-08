@@ -1,6 +1,15 @@
 # Text-to-Cypher LoRA Fine-Tuning
 
-Schema-grounded Neo4j query generation with Qwen2.5-3B-Instruct, Unsloth, 4-bit model loading, and LoRA.
+Parameter-efficient adaptation of Qwen2.5-3B-Instruct for schema-grounded Neo4j query generation, using Unsloth, 4-bit model loading, and LoRA on a single NVIDIA Tesla T4.
+
+## Experiment highlights
+
+- **68% judge preference rate:** GPT-4o preferred the fine-tuned model in 68 of 100 randomized A/B comparisons on held-out graph domains; the base model won 28, with 4 reported ties.
+- **0.96% of parameters trained:** adapted 29.9 million parameters using rank-16 LoRA rather than updating the full 3.1-billion-parameter model.
+- **General-capability subset check:** recorded 59.0% on 200 MMLU questions versus 57.5% for the base model. This small sample does not establish a significant improvement.
+- **Unseen-domain evaluation:** excluded bluesky and stackoverflow2 from training and validation, then evaluated on 100 queries drawn from these domains.
+
+The preference result measures comparative judgments, not executable-query accuracy. Full metrics and limitations are below.
 
 ## Recorded results
 
