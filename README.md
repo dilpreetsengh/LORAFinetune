@@ -1,54 +1,45 @@
 # Text-to-Cypher LoRA Fine-Tuning
 
-Fine-tune `Qwen2.5-3B-Instruct` to generate Neo4j Cypher queries from a graph
-schema and a natural-language question. The training setup uses 4-bit loading
-and Low-Rank Adaptation (LoRA) through Unsloth.
+Schema-grounded Neo4j query generation with Qwen2.5-3B-Instruct, Unsloth, 4-bit model loading, and LoRA.
+
+## Recorded results
+
+| Evaluation | Base | Fine-tuned |
+|---|---:|---:|
+| Strict exact match, 100 held-out queries | 0% | 10% |
+| GPT-4o pairwise preference, 100 comparisons | 28 wins | 68 wins |
+| MMLU subset, 200 questions | 57.5% | 59.0% |
+
+The judge recorded 4 ties. Preference is not execution accuracy. See [evaluation notes](results/README.md) and [saved Colab outputs](notebooks/text_to_cypher_recorded.ipynb).
 
 ## Method
 
-- Base model: `unsloth/Qwen2.5-3B-Instruct`
-- Dataset: `tomasonjo/text2cypher-gpt4o-clean`
-- Adaptation: LoRA, rank 16, alpha 16
-- Quantization: 4-bit loading
-- Hardware: CUDA-capable NVIDIA GPU
-- Random seed: 42
-- Evaluation design: database-level holdout
+- NVIDIA Tesla T4, one GPU; 800 train / 100 validation / 100 test examples.
+- Dataset: [tomasonjo/text2cypher-gpt4o-clean](https://huggingface.co/datasets/tomasonjo/text2cypher-gpt4o-clean), 15 database domains.
+- Hold out bluesky and stackoverflow2 from both training and validation. Train and validation are example-level splits of the remaining database pool.
+- Qwen2.5-3B-Instruct; rank 16, alpha 16, 4-bit loading, maximum sequence length 2048.
+- Learning rate 2e-4; 3 epochs, 300 optimizer steps; effective batch size 8.
+- 29,933,568 trainable parameters (0.96%); final validation loss 0.028692.
 
-The databases `bluesky` and `stackoverflow2` are held out from training and
-validation. This prevents examples from the same graph domain appearing in
-both training and evaluation. The script writes the resulting splits to
-`artifacts/` so the evaluation set can be preserved and inspected.
+## Repository
 
-## Setup
+- `src/train_lora.py`: cleaned standalone training entry point.
+- `notebooks/text_to_cypher_recorded.ipynb`: original successful training, inference, exact-match, judge, and MMLU cells with saved outputs. Installation noise, duplicate failed attempts, and credentials removed. Outputs were not regenerated during cleanup.
+- `results/README.md`: methodology, recorded environment, and limitations.
 
-Create a CUDA-enabled environment, then install the dependencies:
+## Running
+
+The notebook uses Colab-specific Drive paths. Your adapter and raw evaluation JSON files are required to rerun evaluation; they are not included in this repository. You do not need to retrain if the adapter is available.
 
 ```bash
 pip install -r requirements.txt
+python src/train_lora.py --output-dir outputs
 ```
 
-Run training:
+Dependencies are unpinned; the recorded environment is documented in the results notes. Syntax has been checked, but the cleaned script has not been GPU-tested in a fresh environment. Unsloth/TRL APIs can vary by version. Do not assume latest package releases reproduce the recorded environment.
 
-```bash
-python src/train_lora.py
-```
+For judging, configure `OPENAI_API_KEY` securely in your environment. Never commit it. Running the judging cell sends questions and generated queries to OpenAI and incurs API costs.
 
-The default configuration trains on 800 examples, validates on 100 examples,
-and reserves 100 examples from held-out databases for testing. Override these
-values with `--train-size`, `--validation-size`, and `--test-size` when needed.
+## Scope and limitations
 
-## Reproducibility
-
-The split and training seed are fixed at `42`. Results should be reported with
-the GPU model, CUDA/PyTorch versions, training configuration, and evaluation
-script so that latency and accuracy comparisons are interpretable.
-
-This repository currently contains the training pipeline. Exact-match scores,
-LLM-judge results, and forgetting evaluations should be added only after they
-are reproduced from the saved adapter and held-out test set.
-
-## Project status
-
-The original experiment was developed in Google Colab and then cleaned into a
-standalone training script. Model checkpoints and private credentials are not
-stored in this repository.
+This is a student fine-tuning experiment, not a production database agent or custom CUDA-kernel project. Strict string matching does not capture equivalent query formulations. No execution-based query evaluation or hyperparameter sweep is documented. The 200-question MMLU result is a limited retention check, not proof of no catastrophic forgetting. Model and dataset terms still apply; no third-party license rights are implied.
